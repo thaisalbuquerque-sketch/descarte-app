@@ -4,11 +4,11 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
-if (!ANTHROPIC_API_KEY) {
-  console.error('\n❌ ERRO: Variável ANTHROPIC_API_KEY não definida!');
-  console.error('   No Railway: Settings → Variables → adicione ANTHROPIC_API_KEY\n');
+if (!GEMINI_API_KEY) {
+  console.error('\n❌ ERRO: Variável GEMINI_API_KEY não definida!');
+  console.error('   Adicione GEMINI_API_KEY nas variáveis de ambiente.\n');
   process.exit(1);
 }
 
@@ -36,33 +36,80 @@ const server = http.createServer((req, res) => {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
-      const options = {
-        hostname: 'api.anthropic.com',
-        path: '/v1/messages',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-      };
+      try {
+        const payload = JSON.parse(body);
 
-      const proxyReq = https.request(options, proxyRes => {
-        let data = '';
-        proxyRes.on('data', chunk => data += chunk);
-        proxyRes.on('end', () => {
-          res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
-          res.end(data);
+        // Converter formato Anthropic → Gemini
+        const parts = [];
+        const msg = payload.messages[0];
+
+        if (Array.isArray(msg.content)) {
+          for (const block of msg.content) {
+            if (block.type === 'text') {
+              parts.push({ text: block.text });
+            } else if (block.type === 'image') {
+              parts.push({
+                inline_data: {
+                  mime_type: block.source.media_type,
+                  data: block.source.data
+                }
+              });
+            }
+          }
+        } else {
+          parts.push({ text: msg.content });
+        }
+
+        const geminiPayload = JSON.stringify({
+          contents: [{ parts }],
+          generationConfig: {
+            maxOutputTokens: 1024,
+            temperature: 0.2
+          }
         });
-      });
 
-      proxyReq.on('error', err => {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      });
+        const options = {
+          hostname: 'generativelanguage.googleapis.com',
+          path: `/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(geminiPayload)
+          }
+        };
 
-      proxyReq.write(body);
-      proxyReq.end();
+        const proxyReq = https.request(options, proxyRes => {
+          let data = '';
+          proxyRes.on('data', chunk => data += chunk);
+          proxyRes.on('end', () => {
+            try {
+              const geminiResp = JSON.parse(data);
+              // Converter resposta Gemini → formato Anthropic
+              const text = geminiResp?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              const anthropicFormat = {
+                content: [{ type: 'text', text }]
+              };
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(anthropicFormat));
+            } catch (e) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Erro ao processar resposta do Gemini', detail: data }));
+            }
+          });
+        });
+
+        proxyReq.on('error', err => {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        });
+
+        proxyReq.write(geminiPayload);
+        proxyReq.end();
+
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Payload inválido', detail: e.message }));
+      }
     });
     return;
   }
@@ -82,6 +129,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\n✅ Servidor rodando na porta ${PORT}`);
+  console.log(`\n✅ Servidor Gemini rodando na porta ${PORT}`);
   console.log(`   Local: http://localhost:${PORT}\n`);
 });
