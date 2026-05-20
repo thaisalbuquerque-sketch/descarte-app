@@ -3,26 +3,26 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 
 if (!ANTHROPIC_API_KEY) {
   console.error('\n❌ ERRO: Variável ANTHROPIC_API_KEY não definida!');
-  console.error('   Execute: export ANTHROPIC_API_KEY=sua_chave_aqui\n');
+  console.error('   No Railway: Settings → Variables → adicione ANTHROPIC_API_KEY\n');
   process.exit(1);
 }
 
 const MIME = {
-  '.html': 'text/html',
+  '.html': 'text/html; charset=utf-8',
   '.js':   'application/javascript',
   '.css':  'text/css',
   '.json': 'application/json',
   '.png':  'image/png',
   '.jpg':  'image/jpeg',
+  '.ico':  'image/x-icon',
 };
 
 const server = http.createServer((req, res) => {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -32,7 +32,6 @@ const server = http.createServer((req, res) => {
     return res.end();
   }
 
-  // Proxy para Anthropic
   if (req.method === 'POST' && req.url === '/api/claude') {
     let body = '';
     req.on('data', chunk => body += chunk);
@@ -68,7 +67,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Servir arquivos estáticos
   let filePath = req.url === '/' ? '/index.html' : req.url;
   filePath = path.join(__dirname, 'public', filePath);
 
@@ -84,6 +82,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log('\n✅ Servidor rodando!');
-  console.log(`   Abra no browser: http://localhost:${PORT}\n`);
+  console.log(`\n✅ Servidor rodando na porta ${PORT}`);
+  console.log(`   Local: http://localhost:${PORT}\n`);
 });
