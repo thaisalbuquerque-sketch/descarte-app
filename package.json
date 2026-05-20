@@ -1,0 +1,9 @@
+{
+  "name": "descarte-app",
+  "version": "1.0.0",
+  "description": "Assistente de motivo de descarte com IA",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

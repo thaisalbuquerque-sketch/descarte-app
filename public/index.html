@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Assistente de Descarte</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f5f3;
+    color: #1a1a1a;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  .container { max-width: 560px; margin: 0 auto; }
+
+  header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 24px;
+  }
+  header .logo {
+    width: 36px; height: 36px; background: #1a1a1a;
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  }
+  header .logo svg { width: 20px; height: 20px; fill: white; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header p { font-size: 12px; color: #666; margin-top: 1px; }
+
+  .card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e8e8e5;
+    padding: 20px;
+    margin-bottom: 12px;
+  }
+
+  .card-title {
+    font-size: 11px; font-weight: 600; color: #888;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin-bottom: 12px;
+  }
+
+  .hub-row { display: flex; align-items: center; gap: 8px; }
+  .hub-row label { font-size: 13px; color: #555; }
+  .hub-row input {
+    font-size: 14px; font-weight: 600; color: #1a1a1a;
+    border: 1px solid #e0e0de; border-radius: 8px;
+    padding: 6px 10px; width: 110px; text-transform: uppercase;
+  }
+
+  input[type=text], textarea {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid #e0e0de; border-radius: 10px;
+    font-size: 14px; color: #1a1a1a;
+    background: #fafaf8;
+    outline: none; transition: border-color .15s;
+    font-family: inherit;
+  }
+  input[type=text]:focus, textarea:focus { border-color: #1a1a1a; background: white; }
+  textarea { min-height: 80px; resize: vertical; }
+
+  .field-label {
+    font-size: 12px; font-weight: 500; color: #555;
+    margin-bottom: 6px; margin-top: 14px;
+  }
+  .field-label:first-child { margin-top: 0; }
+
+  /* Origem */
+  .origem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .origem-opt {
+    border: 1.5px solid #e0e0de; border-radius: 12px;
+    padding: 14px 12px; cursor: pointer; text-align: center;
+    transition: all .15s; user-select: none; background: #fafaf8;
+  }
+  .origem-opt:hover { border-color: #aaa; }
+  .origem-opt .icon { font-size: 26px; margin-bottom: 6px; }
+  .origem-opt .ot { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .origem-opt .os { font-size: 11px; color: #888; margin-top: 3px; line-height: 1.4; }
+  .origem-opt.sel-entrega { border-color: #2563eb; background: #eff6ff; }
+  .origem-opt.sel-loja    { border-color: #16a34a; background: #f0fdf4; }
+
+  .tempo-wrap { display: none; margin-top: 12px; }
+  .tempo-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tempo-btn {
+    font-size: 12px; padding: 5px 12px; border-radius: 20px;
+    border: 1px solid #e0e0de; background: #fafaf8;
+    color: #555; cursor: pointer; transition: all .15s;
+  }
+  .tempo-btn:hover { border-color: #aaa; }
+  .tempo-btn.sel { background: #fff7ed; border-color: #f59e0b; color: #92400e; font-weight: 500; }
+
+  /* Chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    font-size: 12px; padding: 4px 10px; border-radius: 20px;
+    background: #f5f5f3; border: 1px solid #e0e0de;
+    color: #555; cursor: pointer; transition: all .15s;
+  }
+  .chip:hover { border-color: #aaa; color: #1a1a1a; }
+
+  /* Foto */
+  .photo-zone {
+    border: 1.5px dashed #d0d0ce; border-radius: 12px;
+    padding: 20px; text-align: center; cursor: pointer;
+    transition: border-color .2s; background: #fafaf8;
+  }
+  .photo-zone:hover { border-color: #888; }
+  .photo-zone .pz-icon { font-size: 28px; }
+  .photo-zone p { font-size: 13px; color: #888; margin-top: 6px; }
+  .photo-zone .pz-sub { font-size: 11px; color: #aaa; margin-top: 2px; }
+  #preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 10px; margin-top: 12px; display: none; }
+  .photo-notice {
+    display: none; align-items: center; gap: 6px;
+    font-size: 12px; color: #555; margin-top: 8px;
+  }
+  .photo-notice .remove { margin-left: auto; color: #dc2626; cursor: pointer; }
+
+  /* Motivos lista */
+  details { margin-top: 4px; }
+  details summary {
+    font-size: 12px; color: #888; cursor: pointer;
+    user-select: none; list-style: none; display: flex; align-items: center; gap: 4px;
+  }
+  .reasons-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; }
+  .rpill {
+    font-size: 11px; font-family: 'SF Mono', 'Fira Code', monospace;
+    padding: 4px 8px; border-radius: 6px;
+    border: 1px solid #e8e8e5; color: #555; background: #fafaf8;
+  }
+  .rpill .rtype { font-size: 9px; opacity: .55; margin-right: 4px; }
+
+  /* Botão */
+  .send-btn {
+    width: 100%; padding: 12px; margin-top: 16px;
+    background: #1a1a1a; color: white;
+    border: none; border-radius: 12px; font-size: 15px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: opacity .15s;
+  }
+  .send-btn:hover { opacity: .85; }
+  .send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Resultado */
+  .result-card {
+    background: white; border: 1px solid #e8e8e5;
+    border-radius: 16px; overflow: hidden; margin-top: 16px;
+  }
+  .result-hdr {
+    padding: 10px 16px; background: #f5f5f3;
+    border-bottom: 1px solid #e8e8e5;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: #888;
+  }
+  .result-body { padding: 18px; }
+
+  .reason-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .reason-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .tag-perda { background: #fff7ed; color: #92400e; border: 1px solid #fcd34d; }
+  .tag-mit   { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;
+  }
+  .badge-perda { background: #fef2f2; color: #dc2626; }
+  .badge-mit   { background: #eff6ff; color: #2563eb; }
+
+  .explanation { font-size: 14px; color: #444; line-height: 1.65; }
+
+  .sub-block {
+    margin-top: 10px; background: #f9f9f7;
+    border-radius: 10px; padding: 10px 14px;
+    border: 1px solid #e8e8e5; font-size: 13px; color: #555;
+  }
+  .sub-block-title {
+    font-size: 10px; font-weight: 600; color: #999;
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px;
+  }
+  .alt-tag {
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px;
+    background: white; border: 1px solid #e0e0de;
+    border-radius: 5px; padding: 1px 7px; color: #1a1a1a;
+  }
+
+  .conf-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0f0ee; }
+  .conf-bg { flex: 1; height: 4px; background: #f0f0ee; border-radius: 4px; overflow: hidden; }
+  .conf-fill { height: 100%; border-radius: 4px; transition: width .5s; }
+
+  /* Loading */
+  .dots { display: flex; gap: 5px; justify-content: center; padding: 28px; }
+  .dots span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #ccc; animation: dot 1.2s infinite;
+  }
+  .dots span:nth-child(2) { animation-delay: .2s; }
+  .dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes dot {
+    0%,80%,100% { opacity:.2; transform: scale(.8); }
+    40% { opacity:1; transform: scale(1); }
+  }
+
+  .error-box {
+    background: #fef2f2; border: 1px solid #fca5a5;
+    border-radius: 12px; padding: 14px 16px;
+    font-size: 13px; color: #dc2626; line-height: 1.6; margin-top: 16px;
+  }
+  .error-box strong { display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <h1>Assistente de Descarte</h1>
+      <p>Qual motivo usar no sistema?</p>
+    </div>
+  </header>
+
+  <!-- Loja + SKU -->
+  <div class="card">
+    <div class="card-title">Identificação</div>
+    <div class="hub-row">
+      <label>Loja</label>
+      <input id="hub" type="text" value="SAO005" maxlength="10"/>
+    </div>
+    <div class="field-label">SKU ou nome do produto</div>
+    <input id="sku" type="text" placeholder="ex: FLV-001 ou Alface Crespa"/>
+  </div>
+
+  <!-- Origem -->
+  <div class="card">
+    <div class="card-title">Onde o problema foi identificado?</div>
+    <div class="origem-grid">
+      <div class="origem-opt" id="opt-entrega" onclick="selectOrigem('entrega')">
+        <div class="icon">🚚</div>
+        <div class="ot">Chegou assim na entrega</div>
+        <div class="os">Problema veio do fornecedor ou transportadora</div>
+      </div>
+      <div class="origem-opt" id="opt-loja" onclick="selectOrigem('loja')">
+        <div class="icon">📦</div>
+        <div class="ot">Estava armazenado na loja</div>
+        <div class="os">Produto estava no estoque ou gôndola</div>
+      </div>
+    </div>
+
+    <div class="tempo-wrap" id="tempo-wrap">
+      <div class="field-label">Há quanto tempo está na loja?</div>
+      <div class="tempo-opts">
+        <span class="tempo-btn" onclick="selectTempo('menos de 1 dia', this)">Menos de 1 dia</span>
+        <span class="tempo-btn" onclick="selectTempo('1 a 3 dias', this)">1 a 3 dias</span>
+        <span class="tempo-btn" onclick="selectTempo('mais de 3 dias', this)">Mais de 3 dias</span>
+        <span class="tempo-btn" onclick="selectTempo('não sei', this)">Não sei</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Descrição -->
+  <div class="card">
+    <div class="card-title">Descrição do problema</div>
+    <textarea id="desc" placeholder="ex: embalagem rasgada, mofo visível, prazo vencido, fora de temperatura..."></textarea>
+    <div class="chips">
+      <span class="chip" onclick="fill('Morango 300g','mofo visível nas bordas, prazo vencendo amanhã')">🍓 Mofo</span>
+      <span class="chip" onclick="fill('Iogurte 170g','ficou fora da geladeira por 2h')">🧊 Temperatura</span>
+      <span class="chip" onclick="fill('Leite 1L','embalagem furada, produto vazando')">📦 Avaria</span>
+      <span class="chip" onclick="fill('Banana kg','muito madura, escurecida')">🍌 Qualidade</span>
+      <span class="chip" onclick="fill('Frango 1kg','pedido cancelado, cliente não retirou')">🚚 Ped. cancelado</span>
+      <span class="chip" onclick="fill('Produto X','doação aprovada para entidade parceira')">🎁 Doação</span>
+    </div>
+  </div>
+
+  <!-- Foto -->
+  <div class="card">
+    <div class="card-title">Foto do produto (opcional)</div>
+    <div class="photo-zone" onclick="document.getElementById('file-input').click()">
+      <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none" onchange="handleFile(this)"/>
+      <div class="pz-icon">📷</div>
+      <p>Toque para fotografar ou escolher da galeria</p>
+      <p class="pz-sub">A IA analisa visualmente a condição do produto</p>
+      <img id="preview" alt="preview do produto"/>
+    </div>
+    <div class="photo-notice" id="photo-notice">
+      <span>✅</span>
+      <span id="photo-name"></span>
+      <span class="remove" onclick="clearPhoto()">✕ remover</span>
+    </div>
+  </div>
+
+  <!-- Motivos disponíveis -->
+  <div class="card">
+    <details>
+      <summary>▸ Ver todos os 15 motivos disponíveis no sistema</summary>
+      <div class="reasons-grid" id="reasons-grid"></div>
+    </details>
+  </div>
+
+  <button class="send-btn" id="send-btn" onclick="analyze()">
+    🔍 Consultar motivo de descarte
+  </button>
+
+  <div id="result-area"></div>
+
+</div>
+
+<script>
+const ALL_REASONS = [
+  {key:'expired',              type:'perda', desc:'Produto com prazo vencido'},
+  {key:'quality_out_of_standard', type:'perda', desc:'Fora dos padrões de qualidade (mofo, odor, textura)'},
+  {key:'damaged_broken',       type:'perda', desc:'Embalagem danificada ou produto quebrado'},
+  {key:'out_of_temperature',   type:'perda', desc:'Ficou fora da temperatura correta'},
+  {key:'order_returned_unsuitable', type:'perda', desc:'Devolvido de pedido, inapropriado para revenda'},
+  {key:'freezer_refrigerator_breakdown', type:'perda', desc:'Falha de equipamento de refrigeração'},
+  {key:'AVARIA',               type:'perda', desc:'Avaria geral (WMS)'},
+  {key:'VENCIDO',              type:'perda', desc:'Produto vencido (WMS)'},
+  {key:'loss_claim',           type:'perda', desc:'Perda registrada como sinistro'},
+  {key:'supplier_return',      type:'perda', desc:'Devolução ao fornecedor por inconformidade'},
+  {key:'cancelled_order_not_returned', type:'perda', desc:'Pedido cancelado, produto não retornou'},
+  {key:'unauthorized_consumption', type:'mit', desc:'Consumo não autorizado por colaborador'},
+  {key:'loss_in_transit',      type:'mit',   desc:'Perda durante o transporte (MIT)'},
+  {key:'donation',             type:'mit',   desc:'Doação aprovada para entidade parceira'},
+  {key:'authorized_consumption', type:'mit', desc:'Consumo interno autorizado'},
+];
+
+// popular lista de motivos
+const grid = document.getElementById('reasons-grid');
+ALL_REASONS.forEach(r => {
+  const el = document.createElement('div');
+  el.className = 'rpill';
+  el.title = r.desc;
+  el.innerHTML = `<span class="rtype">${r.type==='mit'?'MIT':'PERDA'}</span>${r.key}`;
+  grid.appendChild(el);
+});
+
+let origemSel = null;
+let tempoSel  = null;
+let photoBase64 = null;
+let photoType   = null;
+
+function selectOrigem(v) {
+  origemSel = v;
+  document.getElementById('opt-entrega').className = 'origem-opt' + (v==='entrega' ? ' sel-entrega' : '');
+  document.getElementById('opt-loja').className    = 'origem-opt' + (v==='loja'    ? ' sel-loja'    : '');
+  document.getElementById('tempo-wrap').style.display = v==='loja' ? 'block' : 'none';
+  if (v==='entrega') {
+    tempoSel = null;
+    document.querySelectorAll('.tempo-btn').forEach(b => b.classList.remove('sel'));
+  }
+}
+
+function selectTempo(v, el) {
+  tempoSel = v;
+  document.querySelectorAll('.tempo-btn').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function fill(sku, desc) {
+  document.getElementById('sku').value  = sku;
+  document.getElementById('desc').value = desc;
+}
+
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    photoBase64 = dataUrl.split(',')[1];
+    photoType   = file.type || 'image/jpeg';
+    document.getElementById('preview').src          = dataUrl;
+    document.getElementById('preview').style.display = 'block';
+    document.getElementById('photo-notice').style.display = 'flex';
+    document.getElementById('photo-name').textContent = file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearPhoto() {
+  photoBase64 = null; photoType = null;
+  document.getElementById('preview').style.display        = 'none';
+  document.getElementById('preview').src                  = '';
+  document.getElementById('photo-notice').style.display   = 'none';
+  document.getElementById('file-input').value             = '';
+}
+
+const reasonsList = ALL_REASONS
+  .map(r => `- ${r.key} [${r.type.toUpperCase()}]: ${r.desc}`)
+  .join('\n');
+
+async function analyze() {
+  const hub  = document.getElementById('hub').value.trim()  || 'SAO005';
+  const sku  = document.getElementById('sku').value.trim();
+  const desc = document.getElementById('desc').value.trim();
+
+  if (!desc && !photoBase64) {
+    alert('Descreva o problema ou anexe uma foto antes de consultar.');
+    return;
+  }
+
+  const origemTexto = origemSel === 'entrega'
+    ? 'O produto CHEGOU ASSIM NA ENTREGA — veio com problema do fornecedor ou transportadora. Priorize supplier_return ou loss_in_transit.'
+    : origemSel === 'loja'
+      ? `O produto ESTAVA ARMAZENADO NA LOJA há ${tempoSel || 'tempo não informado'}. Considere expired, quality_out_of_standard, out_of_temperature ou freezer_refrigerator_breakdown conforme a descrição.`
+      : 'Origem não informada.';
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  document.getElementById('result-area').innerHTML =
+    '<div class="result-card"><div class="dots"><span></span><span></span><span></span></div></div>';
+
+  const prompt = `Você é um especialista em controle de perdas de uma dark store/supermercado.
+O operador da loja ${hub} quer registrar um descarte e precisa saber qual motivo usar no sistema.
+
+Produto: ${sku || 'não informado'}
+Descrição do problema: ${desc || '(analisar pela foto)'}
+Contexto de origem: ${origemTexto}
+
+Regras de negócio:
+- Chegou na entrega com problema → supplier_return (inconformidade de fornecedor) ou loss_in_transit (dano no transporte) ou damaged_broken (avaria física)
+- Armazenado na loja há menos de 1 dia → pode ainda ser problema de entrega, mas considere temperatura/qualidade
+- Armazenado na loja há mais de 1 dia → expired, quality_out_of_standard, out_of_temperature ou freezer_refrigerator_breakdown
+- MIT (não são perdas contábeis): loss_in_transit, donation, authorized_consumption, unauthorized_consumption
+
+Motivos disponíveis (use EXATAMENTE a chave):
+${reasonsList}
+
+${photoBase64 ? 'Uma foto foi enviada. Analise visualmente para confirmar ou ajustar o motivo recomendado.' : ''}
+
+Responda SOMENTE em JSON válido, sem texto fora, no formato:
+{
+  "reason": "<chave exata>",
+  "type": "perda ou mit",
+  "confidence": <0-100>,
+  "explanation": "<2-3 frases em português claro para o operador, mencionando o contexto de origem>",
+  "photo_analysis": "<o que observou na foto, ou null se não houver foto>",
+  "alternative": "<chave alternativa ou null>",
+  "alt_explanation": "<motivo breve do alternativo ou null>"
+}`;
+
+  const userContent = photoBase64
+    ? [
+        { type: 'image', source: { type: 'base64', media_type: photoType, data: photoBase64 } },
+        { type: 'text', text: prompt }
+      ]
+    : prompt;
+
+  try {
+    const resp = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: userContent }]
+      })
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error('HTTP ' + resp.status + ' — ' + txt.slice(0, 200));
+    }
+
+    const data   = await resp.json();
+    const rawText = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const result  = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+    render(result, hub, sku);
+
+  } catch (e) {
+    document.getElementById('result-area').innerHTML = `
+      <div class="error-box">
+        <strong>Erro ao consultar a IA:</strong>
+        ${e.message}
+      </div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function render(r, hub, sku) {
+  const isMit = r.type === 'mit';
+  const conf  = r.confidence || 0;
+  const confColor = conf >= 80 ? '#16a34a' : conf >= 60 ? '#d97706' : '#dc2626';
+
+  const photoBlock = r.photo_analysis ? `
+    <div class="sub-block">
+      <div class="sub-block-title">📷 Análise da foto</div>
+      <div>${r.photo_analysis}</div>
+    </div>` : '';
+
+  const altBlock = r.alternative ? `
+    <div class="sub-block">
+      <div class="sub-block-title">Motivo alternativo possível</div>
+      <span class="alt-tag">${r.alternative}</span>
+      ${r.alt_explanation ? ' — ' + r.alt_explanation : ''}
+    </div>` : '';
+
+  document.getElementById('result-area').innerHTML = `
+    <div class="result-card">
+      <div class="result-hdr">
+        🤖 Recomendação — ${hub}${sku ? ' · ' + sku : ''}
+      </div>
+      <div class="result-body">
+        <div class="reason-row">
+          <span style="font-size:13px;color:#666">Use o motivo:</span>
+          <span class="reason-tag ${isMit ? 'tag-mit' : 'tag-perda'}">🏷 ${r.reason}</span>
+          <span class="badge ${isMit ? 'badge-mit' : 'badge-perda'}">${isMit ? 'MIT' : 'PERDA'}</span>
+        </div>
+        <p class="explanation">${r.explanation}</p>
+        ${photoBlock}
+        ${altBlock}
+        <div class="conf-row">
+          <span style="font-size:12px;color:#888">Confiança</span>
+          <div class="conf-bg">
+            <div class="conf-fill" style="width:${conf}%;background:${confColor}"></div>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:${confColor};min-width:32px;text-align:right">${conf}%</span>
+        </div>
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>
